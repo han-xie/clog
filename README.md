@@ -10,7 +10,6 @@ POSIX environment.
 
 * Implemented as a single header file.
 * C99 / C++98 conformance.\*
-* Multiple loggers (numbered: 0 - 15).
 * Four severity levels (debug, info, warn, error).
 * Customizable log format, time format, date format.
 * Relatively fast (real world 180k logs/sec on my laptop).

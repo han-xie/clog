@@ -32,11 +32,11 @@ void error(const char *fmt, ...)
 
 int test_double_init()
 {
-    CHECK_CALL(clog_init_path(0, TEST_FILE));
-    if (clog_init_path(0, TEST_FILE) == 0) {
+    CHECK_CALL(clog_init_path(TEST_FILE));
+    if (clog_init_path(TEST_FILE) == 0) {
         return 1;
     }
-    clog_free(0);
+    clog_free();
     return 0;
 }
 
@@ -46,10 +46,10 @@ int test_file_write()
     char buf[256];
 
     /* Write to the log */
-    CHECK_CALL(clog_init_path(0, TEST_FILE));
-    CHECK_CALL(clog_set_fmt(0, "%f: %l: %m\n"));
-    clog_debug(CLOG(0), "Hello, %s!", "world");
-    clog_free(0);
+    CHECK_CALL(clog_init_path(TEST_FILE));
+    CHECK_CALL(clog_set_fmt("%f: %l: %m\n"));
+    clog_debug(CLOG, "Hello, %s!", "world");
+    clog_free();
 
     /* Verify what was written */
     f = fopen(TEST_FILE, "r");
@@ -70,10 +70,10 @@ int test_file_write()
 int test_file_write_nonexistent()
 {
     /* Expected to fail, so success is bad */
-    if (clog_init_path(0, "path-doesnt-exist/log.out") == 0) {
+    if (clog_init_path("path-doesnt-exist/log.out") == 0) {
         return 1;
     }
-    if (_clog_loggers[0] != NULL) {
+    if (_clog_loggers != NULL) {
         return 1;
     }
 
@@ -87,10 +87,10 @@ int test_fd_write()
     size_t bytes;
 
     CHECK_CALL(pipe(fd));
-    CHECK_CALL(clog_init_fd(0, fd[1]));
-    CHECK_CALL(clog_set_fmt(0, "%f: %l: %m\n"));
-    clog_debug(CLOG(0), "Hello, %s!", "world");
-    clog_free(0);
+    CHECK_CALL(clog_init_fd(fd[1]));
+    CHECK_CALL(clog_set_fmt("%f: %l: %m\n"));
+    clog_debug(CLOG, "Hello, %s!", "world");
+    clog_free();
     close(fd[1]);
 
     bytes = read(fd[0], buf, 1024);
@@ -112,13 +112,13 @@ int test_all_levels()
     size_t bytes;
 
     CHECK_CALL(pipe(fd));
-    CHECK_CALL(clog_init_fd(0, fd[1]));
-    CHECK_CALL(clog_set_fmt(0, "%f: %l: %m\n"));
-    clog_debug(CLOG(0), "Hello, %s!", "world");
-    clog_info(CLOG(0), "Hello, %s!", "world");
-    clog_warn(CLOG(0), "Hello, %s!", "world");
-    clog_error(CLOG(0), "Hello, %s!", "world");
-    clog_free(0);
+    CHECK_CALL(clog_init_fd(fd[1]));
+    CHECK_CALL(clog_set_fmt("%f: %l: %m\n"));
+    clog_debug(CLOG, "Hello, %s!", "world");
+    clog_info(CLOG, "Hello, %s!", "world");
+    clog_warn(CLOG, "Hello, %s!", "world");
+    clog_error(CLOG, "Hello, %s!", "world");
+    clog_free();
     close(fd[1]);
 
     bytes = read(fd[0], buf, 1024);
@@ -146,14 +146,14 @@ int test_level_filtering()
 
     /* Write to log with level == WARN */
     CHECK_CALL(pipe(fd));
-    CHECK_CALL(clog_init_fd(0, fd[1]));
-    CHECK_CALL(clog_set_fmt(0, "%f: %l: %m\n"));
-    CHECK_CALL(clog_set_level(0, CLOG_WARN));
-    clog_debug(CLOG(0), "Hello, %s!", "world");
-    clog_info(CLOG(0), "Hello, %s!", "world");
-    clog_warn(CLOG(0), "Hello, %s!", "world");
-    clog_error(CLOG(0), "Hello, %s!", "world");
-    clog_free(0);
+    CHECK_CALL(clog_init_fd(fd[1]));
+    CHECK_CALL(clog_set_fmt("%f: %l: %m\n"));
+    CHECK_CALL(clog_set_level(CLOG_WARN));
+    clog_debug(CLOG, "Hello, %s!", "world");
+    clog_info(CLOG, "Hello, %s!", "world");
+    clog_warn(CLOG, "Hello, %s!", "world");
+    clog_error(CLOG, "Hello, %s!", "world");
+    clog_free();
     close(fd[1]);
 
     /* Should receive only messages >= WARN */
@@ -172,48 +172,17 @@ int test_level_filtering()
     return 0;
 }
 
-int test_multiple_loggers()
-{
-    char buf[1024];
-    size_t bytes;
-    int id;
-
-    for (id = 0; id < CLOG_MAX_LOGGERS; id++) {
-        int fd[2];
-        char exp[256];
-        CHECK_CALL(pipe(fd));
-        CHECK_CALL(clog_init_fd(id, fd[1]));
-        CHECK_CALL(clog_set_fmt(id, "%f: %l: %m\n"));
-        clog_debug(CLOG(id), "Hello, %d!", id);
-        close(fd[1]);
-        bytes = read(fd[0], buf, 1024);
-        if (bytes <= 0) {
-            close(fd[0]);
-            return 1;
-        }
-        buf[bytes] = 0;
-        close(fd[0]);
-        snprintf(exp, 256, "%s: DEBUG: Hello, %d!\n", THIS_FILE, id);
-        CHECK_CALL(strcmp(buf, exp));
-    }
-    for (id = 0; id < CLOG_MAX_LOGGERS; id++) {
-        clog_free(id);
-    }
-
-    return 0;
-}
-
 int test_bad_format()
 {
     char too_long[300];
     memset(too_long, 'a', 299);
     too_long[299] = 0;
 
-    CHECK_CALL(clog_init_path(0, "clog_test.out"));
-    if (clog_set_fmt(0, too_long) == 0) {
+    CHECK_CALL(clog_init_path("clog_test.out"));
+    if (clog_set_fmt(too_long) == 0) {
         return 1;
     }
-    clog_free(0);
+    clog_free();
     return 0;
 }
 
@@ -227,10 +196,10 @@ int test_long_message()
     message[49999] = 0;
 
     /* Write to the log */
-    CHECK_CALL(clog_init_path(0, TEST_FILE));
-    CHECK_CALL(clog_set_fmt(0, "%f: %l: %m\n"));
-    clog_debug(CLOG(0), message);
-    clog_free(0);
+    CHECK_CALL(clog_init_path(TEST_FILE));
+    CHECK_CALL(clog_set_fmt("%f: %l: %m\n"));
+    clog_debug(CLOG, message);
+    clog_free();
 
     /* Verify what was written */
     f = fopen(TEST_FILE, "r");
@@ -260,17 +229,17 @@ int test_performance()
     unsigned long messages_per_second;
 
     /* Init */
-    CHECK_CALL(clog_init_path(0, TEST_FILE));
+    CHECK_CALL(clog_init_path(TEST_FILE));
 
     /* Run test */
     CHECK_CALL(gettimeofday(&tv, NULL));
     start_time = tv.tv_sec * MICROS_PER_SEC + tv.tv_usec;
     for (messages = 0; messages < NUM_MESSAGES; messages++) {
-        clog_debug(CLOG(0), "Hello, %s!", "high-performing world");
+        clog_debug(CLOG, "Hello, %s!", "high-performing world");
     }
     CHECK_CALL(gettimeofday(&tv, NULL));
     end_time = tv.tv_sec * MICROS_PER_SEC + tv.tv_usec;
-    clog_free(0);
+    clog_free();
 
     /* Goal: 100,000 messages per second. */
     run_time = (end_time - start_time) / (double) MICROS_PER_SEC;
@@ -303,7 +272,6 @@ int main(int argc, char *argv[])
         TEST_CASE(test_fd_write),
         TEST_CASE(test_all_levels),
         TEST_CASE(test_level_filtering),
-        TEST_CASE(test_multiple_loggers),
         TEST_CASE(test_bad_format),
         TEST_CASE(test_long_message),
 
@@ -317,7 +285,7 @@ int main(int argc, char *argv[])
     const size_t num_tests = sizeof(tests) / sizeof(test_case);
     const char *test_name = NULL;
     int pass = 0, fail = 0;
-    size_t i, j;
+    size_t i;
 
     if (argc > 1) {
         test_name = argv[1];
@@ -345,9 +313,7 @@ int main(int argc, char *argv[])
         }
 
         /* Restore global state in case test didn't clean up */
-        for (j = 0; j < CLOG_MAX_LOGGERS; j++) {
-            _clog_loggers[j] = NULL;
-        }
+        _clog_loggers = NULL;
         error_text[0] = '\0';
     }
     printf("\n");

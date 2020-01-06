@@ -6,6 +6,7 @@
 #include "clog_test.h"
 #include "clog_test_cpp.h"
 
+#undef  __STRICT_ANSI__
 #define THIS_FILE "clog_test_cpp.cpp"
 
 int test_cpp_hello()
@@ -17,10 +18,10 @@ int test_cpp_hello()
     message << "Hello, " << "world!";
 
     CHECK_CALL(pipe(fd));
-    CHECK_CALL(clog_init_fd(0, fd[1]));
-    CHECK_CALL(clog_set_fmt(0, "%f: %l: %m\n"));
-    clog_debug(CLOG(0), "%s", message.str().c_str());
-    clog_free(0);
+    CHECK_CALL(clog_init_fd(fd[1]));
+    CHECK_CALL(clog_set_fmt("%f: %l: %m\n"));
+    clog_debug(CLOG, "%s", message.str().c_str());
+    clog_free();
     close(fd[1]);
 
     size_t bytes = read(fd[0], buf, 1024);
